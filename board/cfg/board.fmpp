@@ -1,0 +1,15 @@
+sourceRoot: ./templates
+outputRoot: ..
+dataRoot: .
+
+freemarkerLinks: {
+    lib: ./libs
+}
+
+data : {
+  doc1:xml (
+    board.chcfg
+    {
+    }
+  )
+}
