@@ -18,7 +18,8 @@
 #include "hal.h"
 #include "shell.h"
 #include "config.h"
-
+#include "shell_cmds.h"
+#include "chprintf.h"
 //#include "rt_test_root.h"
 //#include "oslib_test_root.h"
 
@@ -60,7 +61,7 @@ int main(void) {
    * Activates the serial driver 2 using the driver default configuration.
    */
  // sdStart(&SD1, NULL);
-
+  shell_init();
   /*
    * Creates the blinker thread.
    */
@@ -75,12 +76,9 @@ int main(void) {
 		 test_execute((BaseSequentialStream *)&SD2, &rt_test_suite);
 		 test_execute((BaseSequentialStream *)&SD2, &oslib_test_suite);
 		 }*/
+		//palToggleLine(LINE_LED_GREEN);
 		palToggleLine(LINE_LED_GREEN);
-		chThdSleepMilliseconds(500);
-		palToggleLine(LINE_LED_GREEN);
-		chThdSleepMilliseconds(500);
-		palToggleLine(LINE_LED_ORANGE);
-		chThdSleepMilliseconds(500);
+		//palToggleLine(LINE_LED_ORANGE);
 		chThdSleepMilliseconds(500);
 	}
 }
