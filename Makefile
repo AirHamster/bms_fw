@@ -124,7 +124,7 @@ LDSCRIPT= $(STARTUPLD)/STM32L432xC.ld
 CSRC = $(ALLCSRC) \
        $(TESTSRC) \
        $(CHIBIOS)/os/various/syscalls.c \
-       main.c
+       ./src/main.c
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -154,7 +154,7 @@ CPPWARN = -Wall -Wextra -Wundef
 #
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DSHELL_CONFIG_FILE -DCHPRINTF_USE_FLOAT
 
 # Define ASM defines here
 UADEFS =
