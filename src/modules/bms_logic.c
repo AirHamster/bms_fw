@@ -16,8 +16,9 @@
 #include "board.h"
 #include "bq.h"
 #include "bms_logic.h"
+#include "protocol_bq76pl455.h"
 
-extern dev_t device_chain[MAX_DEVICES_IN_CHAIN];
+extern bq_dev_t device_chain[MAX_DEVICES_IN_CHAIN];
 static cell_summary_t summary;
 
 //
@@ -106,22 +107,55 @@ uint16_t bms_find_delta_voltage(cell_summary_t *summ_struct)
 
 uint16_t* bms_get_voltage_array(void)
 {
-	return cell_voltages;
+	//return cell_voltages;
 }
 
 int8_t bms_print_voltages(BaseSequentialStream* chp)
 {
 
 	uint16_t temp;
-	chprintf(chp, "\r\nDev/cell  \t1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t11\t12\t13\t14\t15\t16\r\n");
+	chprintf(chp, "\r\nDev/cell  \t1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t11\t12\t13\t14\t15\t16");
 	for (int i = 0; i < active_devices; i++) {
-		chprintf(chp, "Device %d:", i+1);
+		chprintf(chp, "\r\nDev %d:\t", i);
 		for (int j = 0; j < CELL_PER_DEVICE; j++) {
-			temp = cell_voltages[i][j];
-			chprintf(chp, "\t%04f", temp / 1000);
+			temp = device_chain[i].voltages[j];
+			chprintf(chp, "\t%.4f", temp / 1000);
 		}
 	}
-
+	chprintf(chp, "\r\n");
 	return 0;
 }
 
+int8_t bms_print_balance_status(BaseSequentialStream* chp)
+{
+	uint16_t temp;
+
+	chprintf(chp, "\r\nDev/cell  \t1\t2\t3\t4\t5\t6\t7\t8\t9\t10\t11\t12\t13\t14\t15\t16");
+	for (int i = 0; i < active_devices; i++) {
+		chprintf(chp, "\r\nDev %d:\t", i);
+		for (int j = 0; j < CELL_PER_DEVICE; j++) {
+			temp = device_chain[i].balance[j];
+			if (temp == 0){
+				chprintf(chp, "\t-");
+			} else {
+				chprintf(chp, "\tX");
+			}
+
+		}
+	}
+	chprintf(chp, "\r\n");
+	return 0;
+}
+
+int8_t bms_print_summary_status(BaseSequentialStream* chp)
+{
+	chprintf(chp, "Battery status summary:\r\n");
+	chprintf(chp, "Total voltage: %.2f\r\n", summary.total_voltage);
+	chprintf(chp, "Max voltage:   %.4f\r\n", summary.max_voltage / 1000);
+	chprintf(chp, "Max V cell:    %d\r\n", summary.max_voltage_cell_number);
+	chprintf(chp, "Min voltage:   %.4f\r\n", summary.min_voltage / 1000);
+	chprintf(chp, "Min V cell:    %d\r\n", summary.min_voltage_cell_number);
+	chprintf(chp, "Delta:         %.4f\r\n", summary.min_max_delta_voltage / 1000);
+
+	return 0;
+}

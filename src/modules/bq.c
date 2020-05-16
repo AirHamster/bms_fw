@@ -9,6 +9,7 @@
 #include "hal.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include "shell.h"
 #include "chprintf.h"
 #include "config.h"
@@ -16,8 +17,9 @@
 #include "shellconf.h"
 #include "bq.h"
 #include "bms_logic.h"
+#include "protocol_bq76pl455.h"
 
-dev_t device_chain[MAX_DEVICES_IN_CHAIN];
+bq_dev_t device_chain[MAX_DEVICES_IN_CHAIN];
 
 SerialConfig bq_sd_cfg = {
   /**
@@ -77,7 +79,11 @@ int8_t bq_start_auto_addressing(SerialDriver *sdp)
 
 int8_t bq_read_address(SerialDriver *sdp)
 {
+	//uint8_t array[7] = {0x81, 0x00, 0x0A, 0x00, 0x2E, 0x9C};
 	uint8_t array[7] = {0x89, 0x00, 0x00, 0x0A, 0x00, 0xDA, 0x83};
+	uint16_t crc = bq_crc_16_ibm(array, 5);
+	array[5] = crc >> 8;
+	array[6] = crc & 0xFF;
 	chprintf(SHELL_IFACE, "BQ writing\r\n");
 	chThdSleepMilliseconds(500);
 	sdWrite(sdp, array, 7);
@@ -91,6 +97,250 @@ int8_t bq_read_faults(SerialDriver *sdp)
 	chThdSleepMilliseconds(500);
 	sdWrite(sdp, array, 6);
 	return 0;
+}
+
+int8_t bq_read_voltages(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = CMD;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 1;
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_initial_sampling_delay(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = SMPL_DLY1;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0; //zero delay
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_internal_sample_period(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = CELL_SPER;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0xBC; //zero delay
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_oversampling_rate(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = OVERSMPL;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0x00; //no oversampling
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_clear_faults(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = STATUS;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0x38; //no oversampling
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_clear_summary_faults_flags(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = FAULT_SUM;
+	msg.data_size = DATA_SIZE_2byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0xFF; //no oversampling
+	msg.data[1] = 0xC0; //no oversampling
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_get_system_status(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = STATUS;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0x00; //no oversampling
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_get_faults_status(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = FAULT_SUM;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0x00; //no oversampling
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_active_cells(SerialDriver *sdp, uint8_t dev_num, uint8_t num_of_cells)
+{
+	bq_msg_t msg;
+
+	//Configure active cells
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = NCHAN;
+	msg.data_size = DATA_SIZE_1byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = num_of_cells; //16 cells init
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_channels(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = CHANNELS;
+	msg.data_size = DATA_SIZE_4byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = 0xFF; //16 cells init
+	msg.data[1] = 0xFF; //16 cells init
+	msg.data[2] = 0x00;
+	msg.data[3] = 0x00;
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_overvoltage(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	uint16_t ov_voltage = bq_convert_mv_to_adc(4200);
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = CELL_OV;
+	msg.data_size = DATA_SIZE_2byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = ov_voltage >> 8;
+	msg.data[1] = ov_voltage & 0xFF;
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_undervoltage(SerialDriver *sdp, uint8_t dev_num)
+{
+	bq_msg_t msg;
+
+	uint16_t uv_voltage = bq_convert_mv_to_adc(2500);
+
+	msg.frm_type = FRM_TYPE_COMMAND;
+	msg.req_type = REQ_TYPE_SINGLE_DEV_WRITE_NO_RESPONSE;
+	msg.addr_size = ADDR_SIZE_8bit;
+	msg.reg_addr = CELL_UV;
+	msg.data_size = DATA_SIZE_2byte;
+	msg.dev_addr = dev_num;
+	msg.data[0] = uv_voltage >> 8;
+	msg.data[1] = uv_voltage & 0xFF;
+	bq_send_message(sdp, &msg);
+}
+
+int8_t bq_configure_analog_frontend(SerialDriver *sdp, uint8_t dev_num, uint8_t num_of_cells)
+{
+	bq_msg_t msg;
+	chprintf(SHELL_IFACE, "Configuring analog frontend:\r\n\r\n");
+	chprintf(SHELL_IFACE, "Setting initial sampling delay...\r\n");
+	bq_configure_initial_sampling_delay(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Setting internal sample period...\r\n");
+	bq_configure_internal_sample_period(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Setting oversampling rate...\r\n");
+	bq_configure_oversampling_rate(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Clearing faults...\r\n");
+	bq_clear_faults(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Clearing summary faults flags...\r\n");
+	bq_clear_summary_faults_flags(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "System status...\r\n");
+	bq_get_system_status(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Faults status...\r\n");
+	bq_get_faults_status(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Setting active cells...\r\n");
+	bq_configure_active_cells(sdp, dev_num, num_of_cells);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Setting sampling channels...\r\n");
+	bq_configure_channels(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Setting overvoltage settings...\r\n");
+	bq_configure_overvoltage(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+
+	chprintf(SHELL_IFACE, "Setting undervoltage settings...\r\n");
+	bq_configure_undervoltage(sdp, dev_num);
+	chThdSleepMilliseconds(1000);
+}
+
+
+
+int8_t bq_send_message(SerialDriver *sdp, bq_msg_t *msg)
+{
+	uint8_t buffer[20];
+	uint16_t crc;
+	buffer[0] = msg->frm_type << 7 | msg->req_type << 4 | msg->data_size;
+	buffer[1] = msg->dev_addr;
+	buffer[2] = msg->reg_addr;
+	memcpy(&buffer[3], msg->data, msg->data_size);
+	crc = bq_crc_16_ibm(buffer, 3 + msg->data_size);
+	buffer[3 + msg->data_size] = crc >> 8;
+	buffer[3 + msg->data_size + 1] = crc & 0xFF;
+	sdWrite(sdp, buffer, 3 + msg->data_size + 2);
 }
 
 int8_t bq_thread_start(void)
@@ -108,6 +358,22 @@ int8_t bq_thread_start(void)
 	} else {
 		return 0;
 	}
+}
+
+uint16_t bq_convert_adc_to_mv(uint16_t adc)
+{
+	uint16_t res;
+	float adc_f = (float)adc;
+	res = (uint16_t)(2 * 2.5 / 65535 * adc * 1000);	//from datasheet, page 27
+	return res;
+}
+
+uint16_t bq_convert_mv_to_adc(uint16_t mv)
+{
+	uint16_t res;
+	float mv_f = (float)mv;
+	res = (uint16_t)(mv_f / 1000 * 65535 / 2.5 / 2);
+	return res;
 }
 
 int8_t bq_enable_balancing(uint8_t device, uint8_t cell)

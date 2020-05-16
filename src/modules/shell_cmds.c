@@ -66,23 +66,40 @@ int8_t shell_init(void)
 
 static void cmd_battery(BaseSequentialStream* chp, int argc, char* argv[])
 {
-		switch (argc){
-		case 1:
-			if (strcmp(argv[0], "status") == 0) {
-				bms_print_voltages(chp);
-				bq_read_address(&BQ_SD);
-				//shell_print_battery_status();
-			}
-			break;
-		default:
-			//print usage
-			break;
+	switch (argc) {
+	case 1:
+		if (strcmp(argv[0], "status") == 0) {
+			bq_read_voltages(&BQ_SD, 0);
+			//bms_print_voltages(chp);
+			//bq_read_address(&BQ_SD);
+			//shell_print_battery_status();
 		}
+		if (strcmp(argv[0], "balance") == 0) {
+			bms_print_balance_status(chp);
+			//bq_read_address(&BQ_SD);
+			//shell_print_battery_status();
+		}
+		if (strcmp(argv[0], "sum") == 0) {
+			bms_print_summary_status(chp);
+			//bq_read_address(&BQ_SD);
+			//shell_print_battery_status();
+		}
+		if (strcmp(argv[0], "init") == 0) {
+			bq_configure_analog_frontend(&BQ_SD, 0, 16);
+			//bq_read_address(&BQ_SD);
+			//shell_print_battery_status();
+		}
+
+		break;
+	default:
+		//print usage
+		break;
+	}
 }
 
 static void cmd_cell(BaseSequentialStream* chp, int argc, char* argv[])
 {
-	bq_read_faults(&BQ_SD);
+	bq_read_address(&BQ_SD);
 }
 
 static void cmd_chain(BaseSequentialStream* chp, int argc, char* argv[])

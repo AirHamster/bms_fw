@@ -27,6 +27,7 @@ typedef struct
 
 typedef struct {
 	bq_dev_t device_chain[MAX_DEVICES_IN_CHAIN];
+	float total_voltage;
 	uint16_t min_voltage;
 	uint16_t max_voltage;
 	uint16_t min_max_delta_voltage;
@@ -39,5 +40,7 @@ uint16_t bms_find_max_voltage(cell_summary_t *summ_struct);
 uint16_t bms_find_min_voltage(cell_summary_t *summ_struct);
 uint16_t* bms_get_voltage_array(void);
 int8_t bms_print_voltages(BaseSequentialStream* chp);
+int8_t bms_print_balance_status(BaseSequentialStream* chp);
+int8_t bms_print_summary_status(BaseSequentialStream* chp);
 
 #endif /* INCLUDES_BMS_LOGIC_H_ */
