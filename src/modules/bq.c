@@ -58,12 +58,30 @@ static THD_WORKING_AREA(bq_listener_thread_wa, 512);
 static THD_FUNCTION( bq_listener_thread, p) {
 	(void) p;
 	uint8_t chr;
+	uint8_t i = 0;
+	uint8_t lenth = 0;
+	uint8_t message[64];
 	chRegSetThreadName("BQ Listener Thd");
 	chprintf(SHELL_IFACE, "Started BQ Listener thread\r\n");
 
 	while (true) {
 	chr = sdGet(&BQ_SD);
-	chprintf(SHELL_IFACE, "BQ received: %x\r\n", chr);
+	message[i] = chr;
+	if (i++ == 0){
+		lenth = chr;
+	}
+	if ((i + 1) == lenth){
+		i = 0;
+		chprintf(SHELL_IFACE, "Resieved %d bytes: ", lenth);
+		for (int j = 1; j <= lenth; j++) {
+			chprintf(SHELL_IFACE, " %x", message[j]);
+		}
+		lenth = 0;
+		chprintf(SHELL_IFACE, "\r\n");
+	}
+
+	//chprintf(SHELL_IFACE, "BQ received: %x\r\n", chr);
+
 	//chThdSleepMilliseconds(1000);
 	}
 }
